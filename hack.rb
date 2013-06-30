@@ -7,8 +7,6 @@ Ray.game("Machine") do
     rect     = Ray::Polygon.rectangle([0,0,20,20], Ray::Color.red)
     rect.pos = [200, 200]
 
-    goodie   = Ray::Polygon.rectangle([0,0,10,10], Ray::Color.yellow)
-    goodie.pos = [rand(100..400), rand(100..400)]
 
     bin      = Ray::Polygon.rectangle([0,0,50,50], Ray::Color.cyan)
     bin.pos  = [rand(100..400), rand(100.400)]
@@ -17,7 +15,20 @@ Ray.game("Machine") do
 
     waypoints = []
     index     = 0
+    timestamp = Time.now
+    running   = false
 
+    goodie   = Ray::Polygon.rectangle([0,0,10,10], Ray::Color.yellow)
+
+
+    on :key_press, key(:space) do
+      running = !running
+    end
+
+    on :key_press, key(:escape) do
+      waypoints.clear
+      markers.clear
+    end
 
     on :mouse_press do |button, pos|
       point = Ray::Vector2[pos.x.round, pos.y.round]
@@ -31,10 +42,12 @@ Ray.game("Machine") do
 
     always do
       if goodie.pos.distance(bin.pos) < 50
-        goodie.pos = bin.pos
+        goodie.pos = [rand(100..400), rand(100..400)]
       elsif goodie.pos.distance(rect.pos) < 20
         goodie.pos = rect.pos
       end
+
+      next unless running
 
       index = (index + 1) % waypoints.length if waypoints[index] == rect.pos
       next if waypoints.empty?
