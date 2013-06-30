@@ -7,6 +7,12 @@ Ray.game("Machine") do
     rect     = Ray::Polygon.rectangle([0,0,20,20], Ray::Color.red)
     rect.pos = [200, 200]
 
+    goodie   = Ray::Polygon.rectangle([0,0,10,10], Ray::Color.yellow)
+    goodie.pos = [rand(100..400), rand(100..400)]
+
+    bin      = Ray::Polygon.rectangle([0,0,50,50], Ray::Color.cyan)
+    bin.pos  = [rand(100..400), rand(100.400)]
+
     markers  = []
 
     waypoints = []
@@ -24,6 +30,12 @@ Ray.game("Machine") do
     end
 
     always do
+      if goodie.pos.distance(bin.pos) < 50
+        goodie.pos = bin.pos
+      elsif goodie.pos.distance(rect.pos) < 20
+        goodie.pos = rect.pos
+      end
+
       index = (index + 1) % waypoints.length if waypoints[index] == rect.pos
       next if waypoints.empty?
 
@@ -40,11 +52,15 @@ Ray.game("Machine") do
       elsif rect.pos.y > destination.y
         rect.pos -= [0, 1]
       end
+
     end
 
     render do |win|
-      markers.each { |e| win.draw(e) }
       win.draw(rect)
+      win.draw(bin)
+      win.draw(goodie)
+
+      markers.each { |e| win.draw(e) }
     end
   end
 
