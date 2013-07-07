@@ -1,3 +1,5 @@
+require("lua-enumerable")
+
 function collide(sa, sb)
   leftA    = sa.x - sa.width / 2
   rightA   = sa.x + sa.width / 2
@@ -13,15 +15,34 @@ function collide(sa, sb)
 end
 
 function workerAt(x, y)
-  for i, worker in ipairs(workers) do
-    if x > worker.x - worker.width / 2 and
-       x < worker.x + worker.width / 2 and
-       y > worker.y - worker.height / 2 and
-       y < worker.y + worker.height / 2 then
-       return worker
-     end
-  end
+  return table.detect(world, function(e) 
+    return e.class == "worker" and
+           x > e.x - e.width / 2 and
+           x < e.x + e.width / 2 and
+           y > e.y - e.height / 2 and
+           y < e.y + e.height / 2 
+  end)
 end
+
+function moveWorkers()
+  workers = table.select(world, function(e) return e.class == "worker" end)
+
+  -- fixme, should be a select
+  wall    = table.detect(world, function(e) return e.class == "wall" end)
+
+  table.each(workers, function(worker)
+    if collide(worker, wall) then
+      if worker.x < wall.x then
+        moveShape(worker, { x = worker.x - 25, y = worker.y })
+      else
+        moveShape(worker, { x = worker.x + 25, y = worker.y })
+      end
+    else
+      moveShape(worker, worker.destination)
+    end
+  end)
+end
+
 
 function drawRectangle(rect)
   love.graphics.setColor(rect.color)
@@ -51,93 +72,98 @@ function moveShape(shape, destination)
 end
 
 function love.load()
-  workers = {{
-    x = 100,
-    y = 100,
-    width = 20,
-    height = 20,
-    moving = false,
-    destination = { x = 100, y = 100 },
-    color = { 255, 0, 0 }
-  }, {
-    x = 600,
-    y = 400,
-    width = 20,
-    height = 20,
-    moving = false,
-    destination = { x = 600, y = 400 },
-    color = { 255, 50, 50 }
-  }}
 
-  player = workers[1]
-  player.color = { 255, 100, 100 }
+  world = {
+    { class = "worker",
+      x = 100,
+      y = 100,
+      width = 20,
+      height = 20,
+      moving = false,
+      destination = { x = 100, y = 100 },
+      color = { 255, 0, 0 }
+    }, 
 
-  widget = {
-    x      = 300,
-    y      = 300,
-    width  = 10,
-    height = 10,
-    color  = { 255, 255, 0 }
-  }
+    { class = "worker",
+      x = 600,
+      y = 400,
+      width = 20,
+      height = 20,
+      moving = false,
+      destination = { x = 600, y = 400 },
+      color = { 255, 50, 50 }
+    },
 
-  machine  = {
-    body = {
+    { class = "widget",
+      x      = 300,
+      y      = 300,
+      width  = 10,
+      height = 10,
+      color  = { 255, 255, 0 }
+    },
+
+    { class = "conveyor",
+      x = 600,
+      y = 500,
+      width = 200,
+      height = 50,
+      color  = { 33, 33, 33 },
+      dy     = 0,
+      dx     = 1
+    },
+
+    { class = "conveyor",
+      x = 700,
+      y = 200,
+      width = 200,
+      height = 50,
+      color  = { 33, 33, 33 },
+      dy     = 0,
+      dx     = 1
+    },
+
+    { class = "wall",
       x = 500,
-      y = 500,
-      width  = 50,
-      height = 50, 
-      color  = { 125, 0, 125 }
+      y = 300,
+      width = 10,
+      height = 600,
+      color  = { 99, 99, 99 },
     },
 
-    input = {
-      x = 475,
-      y = 500,
-      width = 25,
-      height = 25,
-      color  = { 255, 0, 255 }
-    },
+    { class = "machine",
+      body = {
+        x = 500,
+        y = 500,
+        width  = 50,
+        height = 50, 
+        color  = { 125, 0, 125 }
+      },
 
-    output = {
-      x = 525,
-      y = 500,
-      width  = 25,
-      height = 25,
-      color  = { 255, 0, 255 }
+      input = {
+        x = 475,
+        y = 500,
+        width = 25,
+        height = 25,
+        color  = { 255, 0, 255 }
+      },
+
+      output = {
+        x = 525,
+        y = 500,
+        width  = 25,
+        height = 25,
+        color  = { 255, 0, 255 }
+      }
     }
-  }
-
-  conveyors = {{
-    x = 600,
-    y = 500,
-    width = 200,
-    height = 50,
-    color  = { 33, 33, 33 },
-    dy     = 0,
-    dx     = 1
-  },
-  {
-    x = 700,
-    y = 200,
-    width = 200,
-    height = 50,
-    color  = { 33, 33, 33 },
-    dy     = 0,
-    dx     = 1
-  }
-
-  }
-
-
-  wall = {
-    x = 500,
-    y = 300,
-    width = 10,
-    height = 600,
-    color  = { 99, 99, 99 },
   }
 
   font = love.graphics.newFont(64)
   love.graphics.setFont(font)
+
+  player = world[1]
+  player.color = { 255, 100, 100 }
+
+  widget = world[3]
 end
 
 function love.draw()
@@ -145,8 +171,18 @@ function love.draw()
     love.graphics.setColor({255,255,255})
     love.graphics.print("You win!", 100,100)
   else
-    drawRectangle(wall)
+    for i, entity in ipairs(world)  do
+      if entity.class ~= "machine" then
+        drawRectangle(entity)
+      else
+        drawRectangle(entity.body)
+        drawRectangle(entity.input)
+        drawRectangle(entity.output)
+      end
+    end
+  end
 
+--[[
     for i, conveyor in ipairs(conveyors) do
       drawRectangle(conveyor)
     end
@@ -161,16 +197,14 @@ function love.draw()
 
     drawRectangle(widget)
   end
+--]]
 end
 
 function love.update(dt)
-  for i, worker in ipairs(workers) do
-    if collide(worker, wall) then
-      moveShape(worker, { x = worker.x - 25, y = worker.y })
-    else
-      moveShape(worker, worker.destination)
-    end
+  moveWorkers()
 
+  --[[ FIXME: integrate into moveWorker()
+  for i, worker in ipairs(workers) do
     for i, conveyor in ipairs(conveyors) do
       if collide(widget, conveyor) then
         widget.x = widget.x + conveyor.dx
@@ -186,14 +220,17 @@ function love.update(dt)
       end
     end
   end
+  --]]
 end
 
 function love.mousepressed(x, y, button)
   if button == "l" then
-    if workerAt(x, y) then
+    worker = workerAt(x, y)
+
+    if worker then
       player.color = { 255, 50, 50 }
 
-      player = workerAt(x, y)
+      player = worker
       player.color = { 255, 150, 150 }
       player.destination = { x = player.x, y = player.y }
     else
