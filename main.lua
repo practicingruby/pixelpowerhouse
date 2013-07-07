@@ -24,25 +24,6 @@ function workerAt(x, y)
   end)
 end
 
-function moveWorkers()
-  workers = table.select(world, function(e) return e.class == "worker" end)
-
-  -- fixme, should be a select
-  wall    = table.detect(world, function(e) return e.class == "wall" end)
-
-  table.each(workers, function(worker)
-    if collide(worker, wall) then
-      if worker.x < wall.x then
-        moveShape(worker, { x = worker.x - 25, y = worker.y })
-      else
-        moveShape(worker, { x = worker.x + 25, y = worker.y })
-      end
-    else
-      moveShape(worker, worker.destination)
-    end
-  end)
-end
-
 
 function drawRectangle(rect)
   love.graphics.setColor(rect.color)
@@ -74,34 +55,6 @@ end
 function love.load()
 
   world = {
-    { class = "worker",
-      x = 100,
-      y = 100,
-      width = 20,
-      height = 20,
-      moving = false,
-      destination = { x = 100, y = 100 },
-      color = { 255, 0, 0 }
-    }, 
-
-    { class = "worker",
-      x = 600,
-      y = 400,
-      width = 20,
-      height = 20,
-      moving = false,
-      destination = { x = 600, y = 400 },
-      color = { 255, 50, 50 }
-    },
-
-    { class = "widget",
-      x      = 300,
-      y      = 300,
-      width  = 10,
-      height = 10,
-      color  = { 255, 255, 0 }
-    },
-
     { class = "conveyor",
       x = 600,
       y = 500,
@@ -154,16 +107,48 @@ function love.load()
         height = 25,
         color  = { 255, 0, 255 }
       }
-    }
+    },
+
+    { class = "worker",
+      x = 100,
+      y = 100,
+      width = 20,
+      height = 20,
+      moving = false,
+      destination = { x = 100, y = 100 },
+      color = { 255, 0, 0 }
+    }, 
+
+    { class = "worker",
+      x = 600,
+      y = 400,
+      width = 20,
+      height = 20,
+      moving = false,
+      destination = { x = 600, y = 400 },
+      color = { 255, 50, 50 }
+    },
+
+    { class = "widget",
+      x      = 300,
+      y      = 300,
+      width  = 10,
+      height = 10,
+      color  = { 255, 255, 0 }
+    },
+
   }
 
   font = love.graphics.newFont(64)
   love.graphics.setFont(font)
 
-  player = world[1]
+  machine = table.detect(world, function(e) return e.class == "machine" end)
+
+  player  = table.detect(world, function(e) return e.class == "worker" end)
   player.color = { 255, 100, 100 }
 
-  widget = world[3]
+  widget  = world[7]
+
 end
 
 function love.draw()
@@ -181,31 +166,27 @@ function love.draw()
       end
     end
   end
-
---[[
-    for i, conveyor in ipairs(conveyors) do
-      drawRectangle(conveyor)
-    end
-
-    drawRectangle(machine.body)
-    drawRectangle(machine.input)
-    drawRectangle(machine.output)
-
-    for i, worker in ipairs(workers) do
-      drawRectangle(worker)
-    end
-
-    drawRectangle(widget)
-  end
---]]
 end
 
 function love.update(dt)
-  moveWorkers()
+  workers   = table.select(world, function(e) return e.class == "worker" end)
+  conveyors = table.select(world, function(e) return e.class == "conveyor" end)
 
-  --[[ FIXME: integrate into moveWorker()
-  for i, worker in ipairs(workers) do
-    for i, conveyor in ipairs(conveyors) do
+  -- fixme, should be a select
+  wall    = table.detect(world, function(e) return e.class == "wall" end)
+
+  table.each(workers, function(worker)
+    if collide(worker, wall) then
+      if worker.x < wall.x then
+        moveShape(worker, { x = worker.x - 25, y = worker.y })
+      else
+        moveShape(worker, { x = worker.x + 25, y = worker.y })
+      end
+    else
+      moveShape(worker, worker.destination)
+    end
+
+    table.each(conveyors, function(conveyor) 
       if collide(widget, conveyor) then
         widget.x = widget.x + conveyor.dx
         widget.y = conveyor.y
@@ -218,9 +199,8 @@ function love.update(dt)
         widget.x = worker.x
         widget.y = worker.y
       end
-    end
-  end
-  --]]
+    end)
+  end)
 end
 
 function love.mousepressed(x, y, button)
