@@ -53,7 +53,10 @@ function moveShape(shape, destination)
 end
 
 function love.load()
-
+  -- FIXME: A standardized schema for world objects
+  -- is good, but is there any reason to put them
+  -- all in one table?
+  --
   world = {
     { class = "conveyor",
       x = 600,
@@ -84,6 +87,14 @@ function love.load()
     },
 
     { class = "machine",
+
+      process = function(widget) 
+        widget.x = machine.output.x
+        widget.y = machine.output.y
+
+        widget.color = {0, 255, 0}
+      end,
+
       body = {
         x = 500,
         y = 500,
@@ -137,6 +148,14 @@ function love.load()
       color  = { 255, 255, 0 }
     },
 
+    { class  = "widget",
+      x      = 350,
+      y      = 350,
+      width  = 10,
+      height = 10,
+      color  = { 255, 255, 0 }
+    }
+
   }
 
   font = love.graphics.newFont(64)
@@ -147,16 +166,27 @@ function love.load()
   player  = table.detect(world, function(e) return e.class == "worker" end)
   player.color = { 255, 100, 100 }
 
-  widget  = world[7]
+  widgets  = table.select(world, function(e) return e.class == "widget" end)
 
+  score    = 0
 end
 
 function love.draw()
-  if widget.x >= 800 then
+  if table.getn(widgets) == 0 then
     love.graphics.setColor({255,255,255})
     love.graphics.print("You win!", 100,100)
   else
-    for i, entity in ipairs(world)  do
+    table.each(widgets, function(widget, i)
+      love.graphics.print("Score: " .. score, 500,100)
+
+      if widget.x >= 800 then
+        widget.x = 1000  -- FIXME: BLECHHHH!
+        score = score + 1
+        table.remove(widgets, i)
+      end
+    end)
+
+    table.each(world, function(entity)
       if entity.class ~= "machine" then
         drawRectangle(entity)
       else
@@ -164,7 +194,7 @@ function love.draw()
         drawRectangle(entity.input)
         drawRectangle(entity.output)
       end
-    end
+    end)
   end
 end
 
@@ -185,21 +215,24 @@ function love.update(dt)
     else
       moveShape(worker, worker.destination)
     end
+  end)
 
-    table.each(conveyors, function(conveyor) 
-      if collide(widget, conveyor) then
-        widget.x = widget.x + conveyor.dx
-        widget.y = conveyor.y
-      elseif collide(widget, machine.input) then
-        widget.x = machine.output.x
-        widget.y = machine.output.y
+  -- move widgets
 
-        widget.color = {0, 255, 0}
-      elseif collide(widget, worker) then
-        widget.x = worker.x
-        widget.y = worker.y
-      end
-    end)
+  table.each(widgets, function(widget) 
+    local conveyor = table.detect(world, function(e) return e.class == "conveyor" and collide(widget, e) end)
+    local machine  = table.detect(world, function(e) return e.class == "machine"  and collide(widget, e.input) end)
+    local worker   = table.detect(world, function(e) return e.class == "worker"   and collide(widget, e) end)
+
+    if conveyor then
+      widget.x = widget.x + conveyor.dx
+      widget.y = conveyor.y
+    elseif machine then
+      machine.process(widget)
+    elseif worker then
+      widget.x = worker.x
+      widget.y = worker.y
+    end
   end)
 end
 
